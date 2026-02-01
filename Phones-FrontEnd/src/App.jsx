@@ -1,74 +1,57 @@
-import { useEffect, useState } from 'react'
-import './App.css'
+// src/App.jsx
+import React from "react";
+import { Navigate, Route, Routes, useLocation } from "react-router-dom";
+import Navbar from "./components/Navbar.jsx";
 
-function App() {
-    const [coolPhones, setcoolPhones] = useState(null);
+import PhonesListPage from "./pages/PhonesListPage.jsx";
+import PhoneDetailPage from "./pages/PhoneDetailPage.jsx";
+import PhoneCreatePage from "./pages/PhoneCreatePage.jsx";
+import PhoneEditPage from "./pages/PhoneEditPage.jsx";
+import LoginPage from "./pages/LoginPage.jsx";
+import ProtectedPage from "./pages/ProtectedPage.jsx";
+import UploadPage from "./pages/UploadPage.jsx";
+import AboutPage from "./pages/AboutPage.jsx";
+import NotFoundPage from "./pages/NotFoundPage.jsx";
 
-    const router = createBrowserRouter([
-        {
-            path: "/",
-            children: [
-                {
-                    path: "/about",
-                    element: <About />
-                },
-                {
-                    path: "/phones",
-                    element: <CoolPhonesOverview/>
-                },
-                {
-                    path: "/phones/create",
-                    element: <CreateForm />
-                },
-                {
-                    path: "/phones/:id",
-                    element: <CoolPhoneDetail />
-                }
-            ]
-        }
-    ]);
+import { CSSTransition, TransitionGroup } from "react-transition-group";
 
-
-
-    async function fetchcoolPhones() {
-        try {
-            const response = await fetch("https://prg06-node-express.antwan.eu/spots/", {
-                method: "GET",
-                headers: {
-                    Accept: "application/json",
-                    "Content-Type": "application/json"
-                },
-            });
-
-            const data = await response.json();
-            setcoolPhones(data.items);
-        } catch (e) {
-            console.error("Fout bij het ophalen van producten:", e);
-        }
-    }
-
-    useEffect(() => {
-        fetchcoolPhones();
-    }, []);
+export default function App() {
+    const location = useLocation();
 
     return (
-        <>
-            <h1 className="text-2xl font-bold py-4">ChessSpots</h1>
+        <div className="min-h-screen bg-slate-50 text-slate-900">
+            <Navbar />
 
-            {coolPhones ? (
-                <ul className="divide-y divide-gray-200">
-                    {coolPhones.map((spot) => (
-                        <li key={spot.id} className="py-4">
-                            <p className="font-bold">{spot.name}</p>
-                            <p className="text-sm">{spot.description}</p>
-                        </li>
-                    ))}
-                </ul>
-            ) : (
-                <p>coolPhones laden...</p>
-            )}
-        </>
+            <TransitionGroup component={null}>
+                <CSSTransition key={location.pathname} classNames="page" timeout={180}>
+                    <main>
+                        <Routes location={location}>
+                            <Route path="/" element={<Navigate to="/phones" replace />} />
+
+                            <Route path="/phones" element={<PhonesListPage />} />
+                            <Route path="/phones/:id" element={<PhoneDetailPage />} />
+                            <Route path="/phones/create" element={<PhoneCreatePage />} />
+                            <Route path="/phones/:id/edit" element={<PhoneEditPage />} />
+
+                            {/* Routable modal (delete) via PhonesListPage */}
+                            <Route path="/phones/:id/delete" element={<PhonesListPage />} />
+
+                            <Route path="/login" element={<LoginPage />} />
+                            <Route path="/protected" element={<ProtectedPage />} />
+                            <Route path="/upload" element={<UploadPage />} />
+                            <Route path="/about" element={<AboutPage />} />
+
+                            <Route path="*" element={<NotFoundPage />} />
+                        </Routes>
+                    </main>
+                </CSSTransition>
+            </TransitionGroup>
+
+            <footer className="mt-10 border-t border-slate-200 bg-white">
+                <div className="mx-auto max-w-6xl px-4 py-6 text-xs text-slate-500">
+                    CoolPhones — React + Tailwind + REST API
+                </div>
+            </footer>
+        </div>
     );
 }
-
-export default App;
