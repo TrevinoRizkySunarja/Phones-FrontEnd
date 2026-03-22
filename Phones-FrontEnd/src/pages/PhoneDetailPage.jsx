@@ -1,94 +1,93 @@
-// src/pages/PhoneDetailPage.jsx
 import React, { useEffect, useState } from "react";
-import PageShell from "../layout/PageShell.jsx";
-import { getPhone } from "../api/coolphones.js";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams } from "react-router";
+import { usePhones } from "../context/PhonesContext.jsx";
+import { useAuth } from "../context/AuthContext.jsx";
 
 export default function PhoneDetailPage() {
     const { id } = useParams();
+    const { loadDetail } = usePhones();
+    const { isAuthed } = useAuth();
+
     const [phone, setPhone] = useState(null);
     const [err, setErr] = useState("");
-    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        let mounted = true;
-        async function load() {
-            setLoading(true);
-            setErr("");
-            try {
-                const data = await getPhone(id);
-                if (mounted) setPhone(data);
-            } catch (e) {
-                if (mounted) setErr(e.status === 404 ? "Not found (404)" : (e.message || "Failed"));
-            } finally {
-                if (mounted) setLoading(false);
-            }
-        }
-        load();
-        return () => { mounted = false; };
+        let active = true;
+        setErr("");
+        setPhone(null);
+
+        loadDetail(id)
+            .then((d) => active && setPhone(d))
+            .catch((e) => active && setErr(e.message || "Not found"));
+
+        return () => {
+            active = false;
+        };
     }, [id]);
 
+    if (err) {
+        return (
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
+                <div className="text-white text-xl font-semibold">Item not found</div>
+                <div className="text-white/60 mt-2">{err}</div>
+                <Link to="/" className="inline-block mt-4 text-indigo-300 hover:text-indigo-200">
+                    Back to collection
+                </Link>
+            </div>
+        );
+    }
+
+    if (!phone) return <div className="text-white/70">Loading detail...</div>;
+
     return (
-        <PageShell title="CoolPhones Detail" subtitle="Detailweergave via Router: /phones/:id">
-            {loading ? (
-                <div className="rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-600">
-                    Loading...
+        <div className="rounded-2xl border border-white/10 bg-white/5 p-6 space-y-4">
+            <div className="flex items-start justify-between gap-4">
+                <div>
+                    <div className="text-white text-2xl font-semibold">{phone.title}</div>
+                    <div className="text-white/60">{phone.brand}</div>
                 </div>
-            ) : err ? (
-                <div className="rounded-2xl border border-rose-200 bg-rose-50 p-6 text-sm text-rose-700">
-                    {err}
+
+                {isAuthed ? (
+                    <Link
+                        to={`/phones/${phone.id}/edit`}
+                        className="px-3 py-2 rounded-lg bg-indigo-500/20 text-indigo-200 hover:bg-indigo-500/25 transition"
+                    >
+                        Edit
+                    </Link>
+                ) : null}
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+                <div className="rounded-2xl border border-white/10 bg-zinc-950 p-4">
+                    <div className="text-xs text-white/60">Description</div>
+                    <div className="text-white mt-1 whitespace-pre-wrap">{phone.description}</div>
                 </div>
-            ) : (
-                <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5 space-y-4">
-                    <div className="flex items-start justify-between gap-4">
-                        <div>
-                            <div className="text-xl font-bold text-slate-900">{phone.title}</div>
-                            <div className="text-sm text-slate-600">{phone.brand}</div>
-                        </div>
-                        <div className="flex gap-2">
-                            <Link
-                                to={`/phones/${phone.id}/edit`}
-                                className="px-3 py-2 rounded-xl text-sm font-medium bg-slate-100 hover:bg-slate-200 transition"
-                            >
-                                Edit
-                            </Link>
-                            <Link
-                                to="/phones"
-                                className="px-3 py-2 rounded-xl text-sm font-medium bg-slate-900 text-white hover:bg-slate-800 transition"
-                            >
-                                Back
-                            </Link>
-                        </div>
-                    </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div className="md:col-span-2 space-y-3">
-                            <div>
-                                <div className="text-sm font-semibold text-slate-900">Description</div>
-                                <p className="text-sm text-slate-700 whitespace-pre-wrap">{phone.description}</p>
-                            </div>
-
-                            {phone.reviews && (
-                                <div>
-                                    <div className="text-sm font-semibold text-slate-900">Reviews</div>
-                                    <p className="text-sm text-slate-700 whitespace-pre-wrap">{phone.reviews}</p>
-                                </div>
-                            )}
-                        </div>
-
-                        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                            <div className="text-sm font-semibold text-slate-900">Meta</div>
-                            <div className="mt-2 text-sm text-slate-700 space-y-1">
-                                <div>Bookmarked: <span className="font-semibold">{phone.hasBookmark ? "yes" : "no"}</span></div>
-                                <div>Date: <span className="font-semibold">{phone.date || "-"}</span></div>
-                                <div className="break-all">
-                                    Image: <span className="font-semibold">{phone.imageUrl || "-"}</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                <div className="rounded-2xl border border-white/10 bg-zinc-950 p-4">
+                    <div className="text-xs text-white/60">Reviews</div>
+                    <div className="text-white mt-1 whitespace-pre-wrap">{phone.reviews || "-"}</div>
                 </div>
-            )}
-        </PageShell>
+            </div>
+
+            <div className="rounded-2xl border border-white/10 bg-zinc-950 p-4">
+                <div className="text-xs text-white/60">Image</div>
+                {phone.imageUrl ? (
+                    <a
+                        className="text-indigo-300 hover:text-indigo-200 break-all"
+                        href={phone.imageUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                    >
+                        {phone.imageUrl}
+                    </a>
+                ) : (
+                    <div className="text-white/60">-</div>
+                )}
+            </div>
+
+            <Link to="/" className="inline-block text-indigo-300 hover:text-indigo-200">
+                Back to collection
+            </Link>
+        </div>
     );
 }

@@ -1,269 +1,180 @@
-// src/pages/PhonesListPage.jsx
 import React, { useEffect, useMemo, useState } from "react";
-import PageShell from "../layout/PageShell.jsx";
+import { Link, useSearchParams } from "react-router";
+import { usePhones } from "../context/PhonesContext.jsx";
 import PhoneCard from "../components/PhoneCard.jsx";
-import Modal from "../components/Modal.jsx";
-import { deletePhone, listPhones, patchPhone } from "../api/coolphones.js";
-import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 
 export default function PhonesListPage() {
-    const nav = useNavigate();
-    const location = useLocation();
-    const [params, setParams] = useSearchParams();
+    const { items, pagination, loading, error, loadCollection, removeOne, toggleBookmark } = usePhones();
+    const [searchParams, setSearchParams] = useSearchParams();
 
-    const [data, setData] = useState({ items: [] });
-    const [loading, setLoading] = useState(true);
-    const [err, setErr] = useState("");
+    const q = searchParams.get("q") || "";
+    const brand = searchParams.get("brand") || "";
+    const page = parseInt(searchParams.get("page") || "1", 10);
+    const limit = parseInt(searchParams.get("limit") || "6", 10);
 
-    // Filters (2 stuks): q + brand
-    const q = params.get("q") || "";
-    const brand = params.get("brand") || "";
-
-    // Pagination (front-end) -> X items zichtbaar
-    const limit = Math.max(parseInt(params.get("limit") || "6", 10), 1);
-    const page = Math.max(parseInt(params.get("page") || "1", 10), 1);
-
-    const isDeleteModal = location.pathname.endsWith("/delete");
-
-    async function load() {
-        setLoading(true);
-        setErr("");
-        try {
-            const res = await listPhones({ q, brand });
-            setData(res);
-        } catch (e) {
-            setErr(e.message || "Failed to load");
-        } finally {
-            setLoading(false);
-        }
-    }
+    const [draftQ, setDraftQ] = useState(q);
+    const [draftBrand, setDraftBrand] = useState(brand);
 
     useEffect(() => {
-        load();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [q, brand]);
+        loadCollection({ q, brand, page, limit });
+    }, [q, brand, page, limit]);
 
-    const itemsAll = data?.items || [];
+    const meta = useMemo(() => {
+        const p = pagination;
+        return {
+            currentPage: p?.currentPage || page,
+            totalPages: p?.totalPages || 1,
+            totalItems: p?.totalItems ?? items.length,
+            currentItems: p?.currentItems ?? items.length,
+        };
+    }, [pagination, page, items.length]);
 
-    const totalItems = itemsAll.length;
-    const totalPages = Math.max(Math.ceil(totalItems / limit), 1);
-    const safePage = Math.min(page, totalPages);
+    function applyFilters() {
+        const next = new URLSearchParams(searchParams);
+        if (draftQ.trim()) next.set("q", draftQ.trim());
+        else next.delete("q");
 
-    const itemsPage = useMemo(() => {
-        const start = (safePage - 1) * limit;
-        const end = start + limit;
-        return itemsAll.slice(start, end);
-    }, [itemsAll, safePage, limit]);
+        if (draftBrand.trim()) next.set("brand", draftBrand.trim());
+        else next.delete("brand");
 
-    function applyFilters(e) {
-        e.preventDefault();
-        const fd = new FormData(e.currentTarget);
-        const next = {};
-        const nextQ = (fd.get("q") || "").toString().trim();
-        const nextBrand = (fd.get("brand") || "").toString().trim();
-        const nextLimit = (fd.get("limit") || "6").toString();
-
-        if (nextQ) next.q = nextQ;
-        if (nextBrand) next.brand = nextBrand;
-        next.limit = nextLimit;
-        next.page = "1";
-        setParams(next);
+        next.set("page", "1");
+        next.set("limit", String(limit));
+        setSearchParams(next);
     }
 
     function resetFilters() {
-        setParams({ limit: "6", page: "1" });
+        setDraftQ("");
+        setDraftBrand("");
+        setSearchParams(new URLSearchParams({ page: "1", limit: String(limit) }));
     }
 
-    function goPage(p) {
-        const next = new URLSearchParams(params);
-        next.set("page", String(p));
-        setParams(next);
+    function setPage(nextPage) {
+        const next = new URLSearchParams(searchParams);
+        next.set("page", String(nextPage));
+        next.set("limit", String(limit));
+        setSearchParams(next);
     }
 
-    async function onToggleBookmark(phone) {
-        // Extra onderdeel: PATCH update vanuit de lijst (hasBookmark)
-        try {
-            await patchPhone(phone.id, { hasBookmark: !phone.hasBookmark });
-            await load();
-        } catch (e) {
-            setErr(e.message || "Failed to update");
-        }
+    async function handleDelete(id) {
+        await removeOne(id);
+        await loadCollection({ q, brand, page, limit });
     }
 
-    function openDeleteModal(id) {
-        nav(`/phones/${id}/delete${location.search}`);
-    }
-
-    async function confirmDelete(id) {
-        try {
-            await deletePhone(id);
-            nav(`/phones${location.search}`);
-            await load();
-        } catch (e) {
-            setErr(e.message || "Failed to delete");
-        }
+    async function handleBookmark(id, nextValue) {
+        await toggleBookmark(id, nextValue);
+        await loadCollection({ q, brand, page, limit });
     }
 
     return (
-        <PageShell
-            title="CoolPhones Collection"
-            subtitle="Overzicht (niet alle detailvelden). Filters: q + brand. Bookmark via PATCH vanuit de lijst."
-        >
-            <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-4">
-                <form onSubmit={applyFilters} className="grid grid-cols-1 md:grid-cols-12 gap-3">
-                    <div className="md:col-span-4">
-                        <input
-                            name="q"
-                            defaultValue={q}
-                            className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-400"
-                            placeholder="Search q (e.g. iphone)"
-                        />
+        <div className="space-y-6">
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
+                <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+                    <div>
+                        <h1 className="text-white text-2xl font-semibold">CoolPhones Collection</h1>
+                        <p className="text-sm text-white/60 mt-1">
+                            Overzicht (niet alle detailvelden). Filters: q + brand. Bookmark via PATCH vanuit de lijst.
+                        </p>
                     </div>
 
-                    <div className="md:col-span-3">
-                        <input
-                            name="brand"
-                            defaultValue={brand}
-                            className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-400"
-                            placeholder="Brand (e.g. Apple)"
-                        />
-                    </div>
+                    <Link
+                        to="/phones/create"
+                        className="inline-flex items-center justify-center rounded-xl bg-white text-zinc-950 font-semibold px-4 py-2.5 hover:bg-white/90 transition"
+                    >
+                        Create new
+                    </Link>
+                </div>
 
-                    <div className="md:col-span-2">
-                        <select
-                            name="limit"
-                            defaultValue={String(limit)}
-                            className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm bg-white outline-none focus:ring-2 focus:ring-slate-400"
+                <div className="mt-5 grid gap-3 md:grid-cols-4">
+                    <input
+                        value={draftQ}
+                        onChange={(e) => setDraftQ(e.target.value)}
+                        className="rounded-xl bg-zinc-950 border border-white/10 px-3 py-2 text-white outline-none focus:border-white/20"
+                        placeholder="Search q (e.g. iphone)"
+                    />
+                    <input
+                        value={draftBrand}
+                        onChange={(e) => setDraftBrand(e.target.value)}
+                        className="rounded-xl bg-zinc-950 border border-white/10 px-3 py-2 text-white outline-none focus:border-white/20"
+                        placeholder="Brand (e.g. Apple)"
+                    />
+                    <select
+                        value={limit}
+                        onChange={(e) => {
+                            const next = new URLSearchParams(searchParams);
+                            next.set("limit", e.target.value);
+                            next.set("page", "1");
+                            setSearchParams(next);
+                        }}
+                        className="rounded-xl bg-zinc-950 border border-white/10 px-3 py-2 text-white outline-none focus:border-white/20"
+                    >
+                        <option value="6">limit=6</option>
+                        <option value="8">limit=8</option>
+                        <option value="12">limit=12</option>
+                    </select>
+
+                    <div className="flex gap-2">
+                        <button
+                            onClick={applyFilters}
+                            className="flex-1 rounded-xl bg-white/10 border border-white/10 text-white px-4 py-2.5 hover:bg-white/15 transition"
                         >
-                            <option value="4">limit=4</option>
-                            <option value="6">limit=6</option>
-                            <option value="8">limit=8</option>
-                            <option value="12">limit=12</option>
-                        </select>
-                    </div>
-
-                    <div className="md:col-span-3 flex gap-2">
-                        <button className="flex-1 rounded-xl bg-slate-900 text-white px-4 py-2 text-sm font-medium hover:bg-slate-800 transition">
                             Apply
                         </button>
                         <button
-                            type="button"
                             onClick={resetFilters}
-                            className="flex-1 rounded-xl bg-slate-100 px-4 py-2 text-sm font-medium hover:bg-slate-200 transition"
+                            className="rounded-xl bg-white/5 border border-white/10 text-white/80 px-4 py-2.5 hover:bg-white/10 transition"
                         >
                             Reset
                         </button>
                     </div>
-                </form>
+                </div>
 
-                <div className="mt-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-                    <div className="text-sm text-slate-600">
-                        Showing <span className="font-semibold text-slate-900">{itemsPage.length}</span> of{" "}
-                        <span className="font-semibold text-slate-900">{totalItems}</span> items
+                <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm text-white/60">
+                    <div>
+                        Showing {meta.currentItems} items • total {meta.totalItems}
                     </div>
 
                     <div className="flex items-center gap-2">
                         <button
-                            onClick={() => goPage(Math.max(safePage - 1, 1))}
-                            disabled={safePage <= 1}
-                            className="px-3 py-2 rounded-xl text-sm bg-slate-100 hover:bg-slate-200 disabled:opacity-50 transition"
+                            onClick={() => setPage(Math.max(meta.currentPage - 1, 1))}
+                            className="px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white/80 hover:bg-white/10 transition disabled:opacity-40"
+                            disabled={meta.currentPage <= 1}
                         >
                             Prev
                         </button>
-
-                        <div className="text-sm text-slate-700">
-                            page <span className="font-semibold">{safePage}</span> /{" "}
-                            <span className="font-semibold">{totalPages}</span>
+                        <div className="text-white/70">
+                            Page {meta.currentPage} / {meta.totalPages}
                         </div>
-
                         <button
-                            onClick={() => goPage(Math.min(safePage + 1, totalPages))}
-                            disabled={safePage >= totalPages}
-                            className="px-3 py-2 rounded-xl text-sm bg-slate-100 hover:bg-slate-200 disabled:opacity-50 transition"
+                            onClick={() => setPage(Math.min(meta.currentPage + 1, meta.totalPages))}
+                            className="px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white/80 hover:bg-white/10 transition disabled:opacity-40"
+                            disabled={meta.currentPage >= meta.totalPages}
                         >
                             Next
                         </button>
-
-                        <Link
-                            to="/phones/create"
-                            className="ml-2 px-3 py-2 rounded-xl text-sm font-medium bg-emerald-600 text-white hover:bg-emerald-500 transition"
-                        >
-                            + Create
-                        </Link>
                     </div>
                 </div>
             </div>
 
-            {err && (
-                <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-                    {err}
+            {error ? (
+                <div className="rounded-2xl border border-red-500/20 bg-red-500/10 px-5 py-4 text-red-200">
+                    {error}
+                </div>
+            ) : null}
+
+            {loading ? (
+                <div className="text-white/70">Loading...</div>
+            ) : (
+                <div className="grid gap-4 md:grid-cols-2">
+                    {items.map((p) => (
+                        <PhoneCard
+                            key={p.id}
+                            phone={p}
+                            onBookmark={(nextValue) => handleBookmark(p.id, nextValue)}
+                            onDelete={() => handleDelete(p.id)}
+                        />
+                    ))}
                 </div>
             )}
-
-            <div className="mt-6">
-                {loading ? (
-                    <div className="rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-600">
-                        Loading...
-                    </div>
-                ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {itemsPage.map((p) => (
-                            <PhoneCard
-                                key={p.id}
-                                phone={p}
-                                onToggleBookmark={onToggleBookmark}
-                                onDelete={(phone) => openDeleteModal(phone.id)}
-                            />
-                        ))}
-                    </div>
-                )}
-            </div>
-
-            {isDeleteModal && (
-                <DeleteModal
-                    items={itemsAll}
-                    onCancel={() => nav(`/phones${location.search}`)}
-                    onConfirm={confirmDelete}
-                />
-            )}
-        </PageShell>
-    );
-}
-
-function DeleteModal({ items, onCancel, onConfirm }) {
-    // route: /phones/:id/delete
-    const id = window.location.pathname.split("/")[2];
-    const phone = items.find((x) => x.id === id);
-
-    return (
-        <Modal title="Delete phone?" closeTo="/phones">
-            <div className="space-y-3">
-                <div className="text-sm text-slate-700">
-                    {phone ? (
-                        <>
-                            Delete <span className="font-semibold">{phone.title}</span> ({phone.brand})?
-                        </>
-                    ) : (
-                        <>Item not found.</>
-                    )}
-                </div>
-
-                <div className="flex justify-end gap-2">
-                    <button
-                        onClick={onCancel}
-                        className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-sm font-medium transition"
-                    >
-                        Cancel
-                    </button>
-                    <button
-                        onClick={() => onConfirm(id)}
-                        className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-sm font-medium transition"
-                        disabled={!phone}
-                    >
-                        Delete
-                    </button>
-                </div>
-            </div>
-        </Modal>
+        </div>
     );
 }

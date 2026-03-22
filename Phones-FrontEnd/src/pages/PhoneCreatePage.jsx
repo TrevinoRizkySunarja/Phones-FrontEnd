@@ -1,38 +1,37 @@
-// src/pages/PhoneCreatePage.jsx
 import React, { useState } from "react";
-import PageShell from "../layout/PageShell.jsx";
+import { useNavigate } from "react-router";
 import PhoneForm from "../components/PhoneForm.jsx";
-import { createPhone } from "../api/coolphones.js";
-import { useNavigate } from "react-router-dom";
+import { usePhones } from "../context/PhonesContext.jsx";
 
 export default function PhoneCreatePage() {
+    const { createOne } = usePhones();
     const nav = useNavigate();
-    const [busy, setBusy] = useState(false);
     const [err, setErr] = useState("");
 
     async function onSubmit(payload) {
-        setBusy(true);
         setErr("");
         try {
-            const created = await createPhone(payload);
+            const created = await createOne(payload);
             nav(`/phones/${created.id}`);
         } catch (e) {
-            setErr(e.message || "Failed to create");
-        } finally {
-            setBusy(false);
+            setErr(e.message || "Create failed");
         }
     }
 
     return (
-        <PageShell title="Create CoolPhone" subtitle="Nieuwe items aanmaken via POST /phones">
-            {err && (
-                <div className="mb-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+        <div className="rounded-2xl border border-white/10 bg-white/5 p-6 space-y-4">
+            <div>
+                <h1 className="text-white text-2xl font-semibold">Create phone</h1>
+                <p className="text-white/60 text-sm mt-1">POST /phones</p>
+            </div>
+
+            {err ? (
+                <div className="rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-200">
                     {err}
                 </div>
-            )}
-            <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5">
-                <PhoneForm onSubmit={onSubmit} submitLabel="Create" busy={busy} />
-            </div>
-        </PageShell>
+            ) : null}
+
+            <PhoneForm onSubmit={onSubmit} submitLabel="Create" />
+        </div>
     );
 }

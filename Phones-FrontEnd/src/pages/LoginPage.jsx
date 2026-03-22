@@ -1,31 +1,24 @@
-// src/pages/LoginPage.jsx
 import React, { useState } from "react";
-import PageShell from "../layout/PageShell.jsx";
-import { loginBasic } from "../api/coolphones.js";
-import { setToken } from "../api/http.js";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
+import { useAuth } from "../context/AuthContext.jsx";
 
 export default function LoginPage() {
+    const { isAuthed, login } = useAuth();
     const nav = useNavigate();
-    const location = useLocation();
-    const from = location.state?.from || "/phones";
 
-    const [username, setUsername] = useState("");
-    const [password, setPassword] = useState("");
-    const [busy, setBusy] = useState(false);
+    const [username, setUsername] = useState("user");
+    const [password, setPassword] = useState("pass");
     const [err, setErr] = useState("");
+    const [busy, setBusy] = useState(false);
 
-    async function onSubmit(e) {
+    async function submit(e) {
         e.preventDefault();
-        setBusy(true);
         setErr("");
+        setBusy(true);
         try {
-            const res = await loginBasic(username, password);
-            // verwacht { token: "..." } of "token" key
-            const token = res?.token || res?.jwt || res?.access_token;
-            if (!token) throw new Error("No token returned by /login");
-            setToken(token);
-            nav(from);
+            const ok = await login(username, password);
+            if (ok) nav("/");
+            else setErr("JWT invalid/expired.");
         } catch (e2) {
             setErr(e2.message || "Login failed");
         } finally {
@@ -34,48 +27,51 @@ export default function LoginPage() {
     }
 
     return (
-        <PageShell title="Login" subtitle="Gebruik /login (Basic Authorization) -> JWT in localStorage">
-            {location.state?.expired && (
-                <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                    Token expired. Login again.
-                </div>
-            )}
+        <div className="rounded-2xl border border-white/10 bg-white/5 p-6 space-y-4 max-w-xl">
+            <div>
+                <h1 className="text-white text-2xl font-semibold">Login</h1>
+                <p className="text-white/60 text-sm mt-1">POST /login (Basic Authorization → JWT)</p>
+            </div>
 
-            {err && (
-                <div className="mb-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+            {isAuthed ? (
+                <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
+                    You are already logged in.
+                </div>
+            ) : null}
+
+            {err ? (
+                <div className="rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-200">
                     {err}
                 </div>
-            )}
+            ) : null}
 
-            <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5 max-w-xl">
-                <form onSubmit={onSubmit} className="space-y-4">
-                    <label className="block">
-                        <span className="text-sm font-medium text-slate-700">Username</span>
-                        <input
-                            value={username}
-                            onChange={(e) => setUsername(e.target.value)}
-                            className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-400"
-                        />
-                    </label>
+            <form onSubmit={submit} className="space-y-3">
+                <label className="block">
+                    <div className="text-xs text-white/60 mb-1">Username</div>
+                    <input
+                        value={username}
+                        onChange={(e) => setUsername(e.target.value)}
+                        className="w-full rounded-xl bg-zinc-950 border border-white/10 px-3 py-2 text-white outline-none focus:border-white/20"
+                    />
+                </label>
 
-                    <label className="block">
-                        <span className="text-sm font-medium text-slate-700">Password</span>
-                        <input
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            type="password"
-                            className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-400"
-                        />
-                    </label>
+                <label className="block">
+                    <div className="text-xs text-white/60 mb-1">Password</div>
+                    <input
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        type="password"
+                        className="w-full rounded-xl bg-zinc-950 border border-white/10 px-3 py-2 text-white outline-none focus:border-white/20"
+                    />
+                </label>
 
-                    <button
-                        disabled={busy}
-                        className="w-full rounded-xl bg-slate-900 text-white px-4 py-2 text-sm font-medium hover:bg-slate-800 disabled:opacity-60 transition"
-                    >
-                        {busy ? "Logging in..." : "Login"}
-                    </button>
-                </form>
-            </div>
-        </PageShell>
+                <button
+                    disabled={busy}
+                    className="w-full rounded-xl bg-white text-zinc-950 font-semibold py-2.5 hover:bg-white/90 transition disabled:opacity-60"
+                >
+                    {busy ? "Logging in..." : "Login"}
+                </button>
+            </form>
+        </div>
     );
 }

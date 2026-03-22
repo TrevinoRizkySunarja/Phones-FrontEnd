@@ -1,47 +1,39 @@
-// src/pages/ProtectedPage.jsx
 import React, { useEffect, useState } from "react";
-import PageShell from "../layout/PageShell.jsx";
-import { protectedPing } from "../api/coolphones.js";
-import Protected from "../components/Protected.jsx";
+import { apiFetch } from "../api/client.js";
 
 export default function ProtectedPage() {
-    return (
-        <Protected>
-            <ProtectedInner />
-        </Protected>
-    );
-}
-
-function ProtectedInner() {
+    const [status, setStatus] = useState("loading");
     const [msg, setMsg] = useState("");
-    const [err, setErr] = useState("");
 
     useEffect(() => {
-        let mounted = true;
-        async function run() {
-            setErr("");
-            try {
-                const res = await protectedPing();
-                if (mounted) setMsg(JSON.stringify(res));
-            } catch (e) {
-                if (mounted) setErr(e.message || "Protected request failed");
-            }
-        }
-        run();
-        return () => { mounted = false; };
+        apiFetch("/protected/ping", { method: "GET" })
+            .then(({ data }) => {
+                setStatus("ok");
+                setMsg(typeof data === "object" ? JSON.stringify(data) : String(data));
+            })
+            .catch((e) => {
+                setStatus("error");
+                setMsg(e.message || "Unauthorized");
+            });
     }, []);
 
     return (
-        <PageShell title="Protected" subtitle="Endpoint beveiligen met JWT (niet collectie/detail)">
-            {err ? (
-                <div className="rounded-2xl border border-rose-200 bg-rose-50 p-5 text-sm text-rose-700">
-                    {err}
-                </div>
-            ) : (
-                <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5 text-sm text-slate-700">
-                    {msg || "Loading..."}
-                </div>
-            )}
-        </PageShell>
+        <div className="rounded-2xl border border-white/10 bg-white/5 p-6 space-y-3">
+            <div className="text-white text-2xl font-semibold">Protected</div>
+            <div className="text-white/60 text-sm">GET /protected/ping (requires Bearer JWT)</div>
+
+            <div
+                className={[
+                    "rounded-xl border px-4 py-3 text-sm",
+                    status === "ok"
+                        ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-200"
+                        : status === "error"
+                            ? "border-red-500/20 bg-red-500/10 text-red-200"
+                            : "border-white/10 bg-white/5 text-white/70",
+                ].join(" ")}
+            >
+                {status}: {msg}
+            </div>
+        </div>
     );
 }

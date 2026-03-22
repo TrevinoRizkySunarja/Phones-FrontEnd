@@ -1,19 +1,22 @@
-// src/pages/AboutPage.jsx
 import React from "react";
-import PageShell from "../layout/PageShell.jsx";
-import { getBaseUrl } from "../api/http.js";
+import { buildApiBase } from "../api/client.js";
 
 export default function AboutPage() {
     return (
-        <PageShell title="About CoolPhones" subtitle="React + REST API">
-            <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5 text-sm text-slate-700 space-y-2">
-                <div>Backend base URL: <span className="font-semibold">{getBaseUrl()}</span></div>
-                <div>Collection: <span className="font-semibold">/phones</span></div>
-                <div>Detail: <span className="font-semibold">/phones/:id</span></div>
-                <div>Login (JWT): <span className="font-semibold">/login</span></div>
-                <div>Protected: <span className="font-semibold">/protected/ping</span></div>
-                <div>Upload: <span className="font-semibold">/upload</span></div>
+        <div className="rounded-2xl border border-white/10 bg-white/5 p-6 space-y-2">
+            <div className="text-white text-2xl font-semibold">About</div>
+            <div className="text-white/60 text-sm">
+                CoolPhones front-end gebruikt de REST API van praktijkopdracht 1.
             </div>
-        </PageShell>
+            <div className="text-white/80 text-sm">Backend: {buildApiBase()}</div>
+            <ul className="mt-3 list-disc pl-5 text-white/70 text-sm space-y-1">
+                <li>Collection + detail routing</li>
+                <li>Create / edit / delete (auth required)</li>
+                <li>Filters: q + brand</li>
+                <li>Pagination</li>
+                <li>PATCH bookmark</li>
+                <li>Modal detail route</li>
+            </ul>
+        </div>
     );
 }

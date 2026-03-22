@@ -1,24 +1,20 @@
-// src/pages/NotFoundPage.jsx
 import React from "react";
-import PageShell from "../layout/PageShell.jsx";
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 
 export default function NotFoundPage() {
     return (
-        <PageShell title="404" subtitle="Page not found">
-            <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-6">
-                <div className="text-sm text-slate-700">
-                    The URL does not exist.
-                </div>
-                <div className="mt-4">
-                    <Link
-                        to="/phones"
-                        className="inline-flex px-4 py-2 rounded-xl bg-slate-900 text-white text-sm font-medium hover:bg-slate-800 transition"
-                    >
-                        Go to collection
-                    </Link>
-                </div>
+        <div className="rounded-2xl border border-white/10 bg-white/5 p-10 text-center">
+            <div className="text-xs text-white/40">404</div>
+            <div className="text-white text-3xl font-semibold mt-2">Page not found</div>
+            <div className="text-white/60 mt-2">
+                De URL bestaat niet, of de detailpagina kon niet worden gevonden.
             </div>
-        </PageShell>
+            <Link
+                to="/"
+                className="inline-block mt-5 text-indigo-300 hover:text-indigo-200"
+            >
+                Back to collection
+            </Link>
+        </div>
     );
 }

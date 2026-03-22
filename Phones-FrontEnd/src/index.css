@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* React Transition Group page transitions */
+/* react-transition-group page transitions */
 .page-enter {
   opacity: 0;
   transform: translateY(6px);
@@ -17,5 +17,5 @@
 }
 .page-exit-active {
   opacity: 0;
-  transition: opacity 180ms ease;
+  transition: opacity 160ms ease;
 }

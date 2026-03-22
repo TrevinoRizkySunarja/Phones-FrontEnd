@@ -1,66 +1,58 @@
-// src/components/PhoneCard.jsx
 import React from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router";
+import { useAuth } from "../context/AuthContext.jsx";
 
-export default function PhoneCard({ phone, onToggleBookmark, onDelete }) {
-    const bookmarked = !!phone.hasBookmark;
+export default function PhoneCard({ phone, onBookmark, onDelete }) {
+    const { isAuthed } = useAuth();
+    const loc = useLocation();
 
     return (
-        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm hover:shadow-md transition">
-            <div className="p-4 flex items-start justify-between gap-3">
+        <div className="group rounded-2xl border border-white/10 bg-white/5 hover:bg-white/7 transition p-4">
+            <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0">
-                    <div className="text-sm font-semibold text-slate-900 truncate">
-                        {phone.title}
-                    </div>
-                    <div className="text-xs text-slate-500 truncate">{phone.brand}</div>
+                    <div className="text-white font-semibold truncate">{phone.title}</div>
+                    <div className="text-sm text-white/60 truncate">{phone.brand}</div>
+                </div>
 
-                    <div className="mt-3 flex flex-wrap gap-2">
-                        <Link
-                            to={`/phones/${phone.id}`}
-                            className="px-3 py-2 rounded-lg text-sm font-medium bg-slate-900 text-white hover:bg-slate-800 transition"
-                        >
-                            Detail
-                        </Link>
+                <button
+                    onClick={() => onBookmark?.(!phone.hasBookmark)}
+                    className={[
+                        "h-9 w-9 rounded-xl border border-white/10 grid place-items-center transition",
+                        phone.hasBookmark ? "bg-amber-400/20 text-amber-200" : "bg-white/5 text-white/70",
+                    ].join(" ")}
+                    title="Toggle bookmark (PATCH)"
+                >
+                    ★
+                </button>
+            </div>
 
+            <div className="mt-3 flex items-center gap-2">
+                <Link
+                    to={`/phones/${phone.id}`}
+                    state={{ backgroundLocation: loc }}
+                    className="px-3 py-2 rounded-lg text-sm bg-white/10 text-white hover:bg-white/15 transition"
+                >
+                    Detail
+                </Link>
+
+                {isAuthed ? (
+                    <>
                         <Link
                             to={`/phones/${phone.id}/edit`}
-                            className="px-3 py-2 rounded-lg text-sm font-medium bg-slate-100 hover:bg-slate-200 transition"
+                            className="px-3 py-2 rounded-lg text-sm bg-indigo-500/20 text-indigo-200 hover:bg-indigo-500/25 transition"
                         >
                             Edit
                         </Link>
-
                         <button
-                            onClick={() => onToggleBookmark(phone)}
-                            className={[
-                                "px-3 py-2 rounded-lg text-sm font-medium transition",
-                                bookmarked
-                                    ? "bg-emerald-600 text-white hover:bg-emerald-500"
-                                    : "bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200",
-                            ].join(" ")}
-                        >
-                            {bookmarked ? "Bookmarked" : "Bookmark"}
-                        </button>
-
-                        <button
-                            onClick={() => onDelete(phone)}
-                            className="px-3 py-2 rounded-lg text-sm font-medium bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 transition"
+                            onClick={() => onDelete?.()}
+                            className="px-3 py-2 rounded-lg text-sm bg-red-500/15 text-red-200 hover:bg-red-500/20 transition"
                         >
                             Delete
                         </button>
-                    </div>
-                </div>
-
-                <div className="shrink-0">
-                    <div
-                        className={[
-                            "h-10 w-10 rounded-xl grid place-items-center text-xs font-bold",
-                            bookmarked ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-600",
-                        ].join(" ")}
-                        title="Local state from API (hasBookmark)"
-                    >
-                        {bookmarked ? "★" : "☆"}
-                    </div>
-                </div>
+                    </>
+                ) : (
+                    <span className="text-xs text-white/50">Login required for edit/delete</span>
+                )}
             </div>
         </div>
     );
